@@ -1,0 +1,103 @@
+// var should = require("should");
+// var EnoceanLib = require("../src/enocean");
+
+// describe('Enocean', function () {
+// 	var Enocean = EnoceanLib.Enocean;
+// 	var enocean;
+
+// 	afterEach(function () {
+// 		delete enocean;
+// 	})
+
+// 	describe('Constructor', function () {
+
+// 		it('should exist', function () {
+// 			var enocean = new Enocean('/dev/tty.usbserial-FTVBI8RQ', {
+// 				baudrate: 57600
+// 			});
+// 			should.exists(enocean);
+// 			enocean.sp.close();
+// 		})
+
+// 		it('should use the constuctor named enocean', function () {
+// 			var enocean = new Enocean('/dev/tty.usbserial-FTVBI8RQ', {
+// 				baudrate: 57600
+// 			});
+// 			enocean.constructor.name.should.equal('Enocean');
+// 			enocean.sp.close();
+// 		})
+
+// 		it('should throw error if serialport is not specified', function () {
+// 			(function () {
+// 				Enocean();
+// 			}).should.throw();
+// 		})
+
+// 		it('should set the correct path', function  () {
+// 			var enocean = new Enocean('/dev/tty.usbserial-FTVBI8RQ', {
+// 				baudrate: 57600
+// 			});
+// 			enocean.sp['path'].should.equal('/dev/tty.usbserial-FTVBI8RQ');
+// 			enocean.sp.close();
+// 		})
+
+// 		it('should set the correct baudrate', function  () {
+// 			var enocean = new Enocean('/dev/tty.usbserial-FTVBI8RQ', {
+// 				baudrate: 57600
+// 			});
+// 			enocean.sp['options']['baudRate'].should.equal(57600);
+// 			enocean.sp.close();
+// 		})
+
+// 	})
+
+// 	describe('sendCommonCommand', function () {
+// 		this.timeout(5000);
+
+// 		var COMMON_COMMAND = EnoceanLib.COMMON_COMMAND;
+		
+// 		it('should be able to send CO_RD_IDBASE', function (done) {
+// 			var enocean = new Enocean('/dev/tty.usbserial-FTVBI8RQ', {
+// 				baudrate: 57600
+// 			});
+// 			enocean.on('connect', function () {
+// 				enocean.sendCommonCommand(COMMON_COMMAND.CO_RD_IDBASE, function () {
+// 					enocean.sp.close();
+// 					done();
+// 				});
+// 			})
+// 		})
+
+// 	})
+
+// 	describe('on', function () {
+// 		var COMMON_COMMAND = EnoceanLib.COMMON_COMMAND;
+// 		it('should be able to subscribe for responses', function (done) {
+// 			var enocean = new Enocean('/dev/tty.usbserial-FTVBI8RQ', {
+// 				baudrate: 57600
+// 			});
+// 			enocean.on('connect', function () {
+// 				enocean.sendCommonCommand(COMMON_COMMAND.CO_RD_IDBASE);
+// 			});
+// 			enocean.on('response', function (data) {
+// 				console.log(data);
+// 				done();
+// 			});
+// 		})
+
+// 	})
+
+// })
+
+// describe('COMMON_COMMAND', function () {
+// 	var COMMON_COMMAND = EnoceanLib.COMMON_COMMAND;
+
+// 	describe('CO_RD_IDBASE', function () {
+		
+// 		it('should be the right telegram', function () {
+// 			COMMON_COMMAND.CO_RD_IDBASE.toJSON().should.eql([ 85, 0, 1, 0, 5, 112, 8, 56 ]);
+// 		})
+
+// 	})
+
+// })

@@ -1,0 +1,178 @@
+"use strict";
+
+var crc = require('./crc');
+var SerialPort = require("SerialPort").SerialPort;
+
+var util = require("util");
+var events = require("events");
+
+function Enocean (path, options, openImmediately) {
+	events.EventEmitter.call(this);
+
+	this.sp = new SerialPort(path, options, openImmediately);
+
+	var self = this;
+
+	this.sp.on('open', function () {
+		self.emit('connect');
+
+		self.sp.on('data', function (data) {
+			var response = parseRawData(data);
+			//self.emit('response', data);
+		})
+	})
+}
+
+function Header (dataLength, optionalDataLength, packetType) {
+	this.dataLength = dataLength;
+	this.optionalDataLength = optionalDataLength;
+    this.packetType = packetType;
+}
+
+//Constants
+var RADIO = 0x01
+	, RESPONSE = 0x02
+	, RADIO_SUB_T = 0x03
+	, EVENT = 0x04
+	, COMMON_COMM = 0x05
+	, SMART_ACK_C = 0x06
+	, REMOTE_MAN_ = 0x07
+	, RADIO_MESSA = 0x09
+	, RADIO_ADVAN = 0x0A;
+
+var idx = 0
+	, buffer
+	, header
+	, debug = true;
+
+function parseRawData (data) {
+	for (var i = 0; i < data.length; i++) {
+		
+		//Check that we have start of message
+		if (idx == 0 && data[i] == 0x55) {
+			idx++;
+
+			//Create a buffer to hold the header
+			buffer = new Buffer(4);
+		}
+
+		//Add header data to buffer
+		else if (idx > 0 && idx < 5) {
+			buffer[idx-1] = data[i];
+			idx++;
+		}
+
+		else if (idx == 5) {
+			//Compare the CRC8 value of the header with the crc value (fifth byte).
+			//If the crc is not correct it means we are not in sync. Discard subsequent data and rest parse index
+			if (!crc.crc8(buffer) == data[i]) {
+				idx = 0;
+				return;
+			}
+			else {
+				header = new Header(
+					buffer.readUInt16BE(0),
+					buffer.readUInt8(2),
+					buffer.readUInt8(3)
+				);
+				buffer = new Buffer(header.dataLength + header.optionalDataLength);
+				idx++;
+			}
+		}
+
+		//Add data and optional data to buffer
+		else if (idx > 5 && idx <= 5 + header.dataLength + header.optionalDataLength) {
+			buffer[idx-6] = data[i];
+			idx++;
+		}
+
+		//Compare the CRC8 value of the data with the crc value (last byte)
+		else if (idx == 6 + header.dataLength + header.optionalDataLength) {
+			if (crc.crc8(buffer) == data[i]) {
+				var msgData, optionalData;
+				if (header.dataLength > 0) {
+					msgData = buffer.slice(0, header.dataLength);
+				}
+				if (header.optionalDataLength > 0) {
+					optionalData = buffer.slice(header.dataLength, header.dataLength + header.optionalDataLength);
+				}
+
+				switch(header.packetType) {
+					case RADIO:
+						// parseRadio(buffer.slice(0, header.dataLength), buffer.slice(header.dataLength, header.dataLength + header.optionalDataLength));
+						break;
+					case RESPONSE:
+						parseResponse(msgData, optionalData);
+						break;
+				}
+			}
+			idx = 0;
+		}
+	}
+}
+
+function parseResponse(data, optionalData) {
+	var RET_OK = 0,
+		RET_ERROR = 1,
+		RET_NOT_SUPPORTED = 2,
+		RET_WRONG_PARAM = 3,
+		RET_OPERATION_DENIED = 4
+
+	var descriptionForCode = {
+		RET_OK: 'OK ... command is understood and triggered',
+		RET_ERROR: 'There is an error occurred',
+		RET_NOT_SUPPORTED: 'The functionality is not supported by that implementation',
+		RET_WRONG_PARAM: 'There was a wrong parameter in the command',
+		RET_OPERATION_DENIED: 'Example: memory access denied (code-protected)'
+	}
+
+	if (data[0] == RET_OK) {
+		console.log(data.slice(1, data.length));
+		console.log(optionalData);
+	}
+}
+
+util.inherits(Enocean, events.EventEmitter);
+
+Enocean.prototype.sendCommonCommand = function (code, callback) {
+	this.sp.write(code, function (err, results) {
+		if (callback) { callback(err, results); }
+	});
+}
+
+/////////////////////////////////////////////////////
+//
+//  COMMON_COMMANDS
+//
+////////////////////////////////////////////////////
+
+
+/**
+*	Returns common Commands
+*/
+exports.COMMON_COMMAND = {
+	CO_RD_IDBASE: CO_RD_IDBASE()
+}
+
+function CO_RD_IDBASE () {
+	var start = new Buffer(1);
+	start.writeUInt8(0x55, 0);
+
+	var header = new Buffer(4);
+	header.writeUInt16BE(0x0001, 0);
+	header.writeUInt8(0x00, 2);
+	header.writeUInt8(0x05, 3);
+
+	var crc8h = crc.crc8(header);
+	var crc8d = crc.crc8([0x08]);
+
+	var tail = new Buffer(3);
+	tail.writeUInt8(crc8h, 0);
+	tail.writeUInt8(0x08, 1);
+	tail.writeUInt8(crc8d, 2);
+
+
+	return Buffer.concat([start, header, tail]);
+}
+
+module.exports.Enocean = Enocean;
